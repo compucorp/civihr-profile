@@ -1,0 +1,15 @@
+core: 7.x
+api: 2
+
+projects:
+  drupal:
+    version: ~
+  civicrm:
+    download:
+      type: "file"
+      url: "https://download.civicrm.org/civicrm-4.7.31-drupal.tar.gz"
+libraries:
+  civicrm-setup:
+    download:
+      type: "git"
+      url: "git://github.com/civicrm/civicrm-setup.git"

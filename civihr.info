@@ -1,0 +1,22 @@
+name = CiviHR
+description = The open source HR solution for Non-Profits
+core = 7.x
+
+exclusive = true
+
+; Drupal core modules
+dependencies[] = block
+dependencies[] = contextual
+dependencies[] = dashboard
+dependencies[] = image
+dependencies[] = list
+dependencies[] = menu
+dependencies[] = number
+dependencies[] = options
+dependencies[] = path
+dependencies[] = taxonomy
+dependencies[] = dblog
+dependencies[] = search
+dependencies[] = toolbar
+dependencies[] = field_ui
+dependencies[] = file
