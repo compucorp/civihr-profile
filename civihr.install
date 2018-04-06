@@ -152,13 +152,6 @@ function civihr_install() {
     ->fields(array('uid' => 1, 'rid' => $admin_role->rid))
     ->execute();
 
-  // Enable the admin theme.
-  db_update('system')
-    ->fields(array('status' => 1))
-    ->condition('type', 'theme')
-    ->condition('name', 'seven')
-    ->execute();
-  variable_set('admin_theme', 'seven');
   variable_set('node_admin_theme', '1');
 }
 
@@ -182,6 +175,8 @@ function _civihr_install_civihr() {
   ];
 
   $operations = array_merge($operations, _civihr_get_extension_install_operations());
+
+  $operations[] = [ '_civihr_install_ssp', [] ];
 
   return [
     'title' => t('Installing CiviHR'),
@@ -257,4 +252,49 @@ function  _civihr_install_install_extension($extension, &$context) {
   civicrm_api3('Extension', 'install', ['keys' => $extension]);
 
   watchdog(WATCHDOG_INFO, 'Installed ' . $extension);
+}
+
+function _civihr_install_ssp(&$context) {
+  _civihr_enabled_ssp_modules_and_features();
+  _civihr_ssp_extra_configuration();
+  _civihr_setup_themes();
+}
+
+function _civihr_enabled_ssp_modules_and_features() {
+  module_enable([
+    'administerusersbyrole',
+    'role_delegation',
+    'userprotect',
+    'masquerade',
+    'smtp',
+    'logintoboggan',
+    'yoti',
+    'menu_attributes',
+    'roles_for_menu',
+    'civicrmtheme',
+    'civihr_employee_portal_features',
+    'civihr_leave_absences',
+    'leave_and_absences_features',
+    'civihr_default_permissions',
+    'onboarding_slideshow',
+    'civihr_default_mail_content',
+  ]);
+}
+
+function _civihr_ssp_extra_configuration() {
+  variable_set('logintoboggan_login_with_email', 1);
+  variable_set('user_pictures', 0);
+  variable_set('node_export_reset_path_webform', 0);
+  variable_set('mimemail_sitestyle', 0);
+  variable_set('smtp_allowhtml', 1);
+  variable_set('mailsystem_theme', 'default');
+  module_disable(['mimemail_compress']);
+}
+
+function _civihr_setup_themes() {
+  module_enable(['seven', 'civihr_default_theme']);
+  variable_set('admin_theme', 'seven');
+  variable_set('theme_default', 'civihr_default_theme');
+  variable_set('civicrmtheme_theme_admin', 'seven');
+  variable_set('civicrmtheme_theme_public', 'seven');
 }
