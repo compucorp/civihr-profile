@@ -163,10 +163,10 @@ function civihr_install() {
 }
 
 function civihr_install_tasks($install_state) {
-  $tasks['install_civicrm'] = [
+  $tasks['install_civihr'] = [
     'type' => 'batch',
-    'display_name' => st('Install CiviCRM'),
-    'function' => '_civihr_install_civicrm'
+    'display_name' => st('Install CiviHR'),
+    'function' => '_civihr_install_civihr'
   ];
 
   return $tasks;
@@ -174,17 +174,19 @@ function civihr_install_tasks($install_state) {
 
 function civihr_install_tasks_alter(&$tasks, $install_state) {
   $tasks['install_select_profile']['display'] = FALSE;
-  $tasks['install_profile_modules']['display_name'] = st('Install CiviHR');
 }
 
-function _civihr_install_civicrm_task() {
-  return batch_set([
-    'title' => t('Installing CiviCRM'),
-    'operations' => [
-      '_civihr_install_civicrm',
-      []
-    ]
-  ]);
+function _civihr_install_civihr() {
+  $operations = [
+    [ '_civihr_install_civicrm', []]
+  ];
+
+  $operations = array_merge($operations, _civihr_get_extension_install_operations());
+
+  return [
+    'title' => t('Installing CiviHR'),
+    'operations' => $operations
+  ];
 }
 
 function _civihr_install_civicrm(&$context) {
@@ -203,4 +205,56 @@ function _civihr_install_civicrm(&$context) {
   $setup->installDatabase();
 
   watchdog(WATCHDOG_INFO, 'CiviCRM Installed');
+}
+
+function _civihr_get_extension_install_operations() {
+  $operations = [];
+
+  $extensions = [
+    'uk.co.compucorp.civicrm.hrcore',
+    'uk.co.compucorp.civicrm.hremails',
+    'org.civicrm.hrbank',
+    'org.civicrm.hrdemog',
+    'org.civicrm.hrjobcontract',
+    'com.civicrm.hrjobroles',
+    'org.civicrm.hrmed',
+    'org.civicrm.hrqual',
+    'org.civicrm.hremergency',
+    'org.civicrm.hrcareer',
+    'uk.co.compucorp.contactaccessrights',
+    'uk.co.compucorp.civicrm.tasksassignments',
+    'uk.co.compucorp.civicrm.hrcomments',
+    'uk.co.compucorp.civicrm.hrleaveandabsences',
+    'org.civicrm.hrreport',
+    'org.civicrm.hrui',
+    'org.civicrm.hrcase',
+    'org.civicrm.hrim',
+    'org.civicrm.hrrecruitment',
+    'org.civicrm.reqangular',
+    'org.civicrm.contactsummary',
+    'org.civicrm.shoreditch',
+    'org.civicrm.bootstrapcivihr',
+    'uk.co.compucorp.civicrm.hrcontactactionsmenu',
+  ];
+
+  foreach ($extensions as $extension) {
+    $operations[] = [
+      '_civihr_install_install_extension',
+      [$extension]
+    ];
+  }
+
+  return $operations;
+}
+
+function  _civihr_install_install_extension($extension, &$context) {
+  civicrm_initialize();
+  $context['message'] = 'Installed ' . $extension;
+
+  watchdog(WATCHDOG_INFO, 'Installing ' . $extension);
+
+  civicrm_api3('Extension', 'refresh');
+  civicrm_api3('Extension', 'install', ['keys' => $extension]);
+
+  watchdog(WATCHDOG_INFO, 'Installed ' . $extension);
 }

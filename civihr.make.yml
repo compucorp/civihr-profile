@@ -13,3 +13,18 @@ libraries:
     download:
       type: "git"
       url: "git://github.com/civicrm/civicrm-setup.git"
+  civihr:
+    download:
+      type: "git"
+      url: "git://github.com/civicrm/civihr.git"
+    destination: "modules/civicrm/tools/extensions"
+  civihr_tasks:
+    download:
+      type: "git"
+      url: "git://github.com/compucorp/civihr-tasks-assignments.git"
+    destination: "modules/civicrm/tools/extensions"
+  org.civicrm.shoreditch:
+      download:
+        type: "git"
+        url: "git://github.com/compucorp/org.civicrm.shoreditch.git"
+      destination: "modules/civicrm/tools/extensions"
