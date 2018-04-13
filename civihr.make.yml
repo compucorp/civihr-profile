@@ -29,11 +29,9 @@ projects:
   redirect:
     version: "1.0-rc1"
   webform:
-    version: "4.12"
+    version: "4.16"
   webform_civicrm:
-    version: "4.19"
-    patch:
-    - "https://patch-diff.githubusercontent.com/raw/colemanw/webform_civicrm/pull/93.patch"
+    version: "4.20"
   views:
     version: "3.18"
   userprotect:
