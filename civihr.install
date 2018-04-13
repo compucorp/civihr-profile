@@ -241,15 +241,22 @@ function  _civihr_install_install_extensions($extensions, &$context) {
 }
 
 function _civihr_install_ssp(&$context) {
+  watchdog(WATCHDOG_INFO, 'Install SSP');
   _civihr_enabled_ssp_modules_and_features();
-  _civihr_ssp_extra_configuration();
   _civihr_setup_themes();
+  watchdog(WATCHDOG_INFO, 'SSP Installed');
 }
 
 function _civihr_enabled_ssp_modules_and_features() {
-  module_enable([
+  watchdog(WATCHDOG_INFO, 'Installing SSP modules and features');
+  drupal_flush_all_caches();
+
+  $genericModules = [
     'administerusersbyrole',
     'role_delegation',
+    'toolbar',
+    'locale',
+    'seven',
     'userprotect',
     'masquerade',
     'smtp',
@@ -257,17 +264,30 @@ function _civihr_enabled_ssp_modules_and_features() {
     'yoti',
     'menu_attributes',
     'roles_for_menu',
-    'civicrmtheme',
+  ];
+
+  module_enable($genericModules);
+
+  drupal_flush_all_caches();
+
+  _civihr_ssp_extra_configuration();
+
+  $civihrModules = [
     'civihr_employee_portal_features',
     'civihr_leave_absences',
     'leave_and_absences_features',
     'civihr_default_permissions',
     'onboarding_slideshow',
     'civihr_default_mail_content',
-  ]);
+  ];
+
+  module_enable($civihrModules);
+
+  drupal_flush_all_caches();
 }
 
 function _civihr_ssp_extra_configuration() {
+  watchdog(WATCHDOG_INFO, 'SSP extra configuration');
   variable_set('logintoboggan_login_with_email', 1);
   variable_set('user_pictures', 0);
   variable_set('node_export_reset_path_webform', 0);
@@ -275,6 +295,7 @@ function _civihr_ssp_extra_configuration() {
   variable_set('smtp_allowhtml', 1);
   variable_set('mailsystem_theme', 'default');
   module_disable(['mimemail_compress']);
+  drupal_flush_all_caches();
 }
 
 function _civihr_setup_themes() {
