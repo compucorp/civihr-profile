@@ -244,6 +244,7 @@ function _civihr_install_ssp(&$context) {
   watchdog(WATCHDOG_INFO, 'Install SSP');
   _civihr_enabled_ssp_modules_and_features();
   _civihr_setup_themes();
+  _civihr_setup_users();
   watchdog(WATCHDOG_INFO, 'SSP Installed');
 }
 
@@ -306,4 +307,53 @@ function _civihr_setup_themes() {
   variable_set('theme_default', 'civihr_default_theme');
   variable_set('civicrmtheme_theme_admin', 'seven');
   variable_set('civicrmtheme_theme_public', 'seven');
+}
+
+function _civihr_setup_users() {
+  $users = [
+    [
+      'username' => 'civihr_staff',
+      'email' => 'civihr_staff@compucorp.co.uk',
+      'roles' => ['Staff']
+    ],
+    [
+      'username' => 'civihr_manager',
+      'email' => 'civihr_manager@compucorp.co.uk',
+      'roles' => ['Manager']
+    ],
+    [
+      'username' => 'civihr_admin',
+      'email' => 'civihr_admin@compucorp.co.uk',
+      'roles' => ['HR Admin']
+    ],
+  ];
+
+  foreach ($users as $user) {
+    _civihr_create_user($user['username'], $user['email'], $user['roles']);
+  }
+}
+
+function _civihr_create_user($username, $email, $roles = []) {
+  $user = new stdClass();
+  $user->roles = _civihr_get_roles($roles);
+  user_save($user, [
+    'name' => $username,
+    'pass' => $username,
+    'mail' => $email,
+    'access' => '0',
+    'status' => 1,
+  ]);
+}
+
+function _civihr_get_roles($roles) {
+  $userRoles = array_flip(user_roles());
+
+  $ids = [];
+  foreach ($roles as $role) {
+    if(!empty($userRoles[$role])) {
+      $ids[$userRoles[$role]] = $role;
+    }
+  }
+
+  return $ids;
 }
