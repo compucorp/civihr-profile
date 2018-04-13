@@ -299,7 +299,9 @@ function _civihr_ssp_extra_configuration() {
 }
 
 function _civihr_setup_themes() {
-  module_enable(['seven', 'civihr_default_theme']);
+  watchdog(WATCHDOG_INFO, 'Setup SSP themes');
+  theme_enable(['seven', 'civihr_default_theme']);
+  drupal_flush_all_caches();
   variable_set('admin_theme', 'seven');
   variable_set('theme_default', 'civihr_default_theme');
   variable_set('civicrmtheme_theme_admin', 'seven');
