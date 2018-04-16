@@ -1,0 +1,11 @@
+core: 7.x
+api: 2
+
+projects:
+  drupal:
+    version: ~
+  civihr:
+    type: "profile"
+    download:
+      type: "copy"
+      url: "file://."
