@@ -13,7 +13,7 @@ projects:
     download:
       subdir:
       type: "file"
-      url: "https://download.civicrm.org/civicrm-4.7.31-drupal.tar.gz"
+      url: "https://download.civicrm.org/civicrm-5.0.0-drupal.tar.gz"
   civihr_employee_portal:
     subdir: ""
     download:
