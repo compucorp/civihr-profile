@@ -1,0 +1,37 @@
+projects:
+  civihr_employee_portal:
+    download:
+      type: "git"
+      url: "git://github.com/compucorp/civihr-employee-portal.git"
+      branch: "staging"
+      working-copy: true
+  civihr_employee_portal_theme:
+    type: "theme"
+    download:
+      type: "git"
+      url: "git://github.com/compucorp/civihr-employee-portal-theme.git"
+      branch: "staging"
+      working-copy: true
+
+libraries:
+  civihr:
+    download:
+      type: "git"
+      url: "git://github.com/civicrm/civihr.git"
+      branch: "staging"
+      working-copy: true
+    destination: "modules/civicrm/tools/extensions"
+  civihr_tasks:
+    download:
+      type: "git"
+      url: "git://github.com/compucorp/civihr-tasks-assignments.git"
+      branch: "staging"
+      working-copy: true
+    destination: "modules/civicrm/tools/extensions"
+  org.civicrm.shoreditch:
+    download:
+      type: "git"
+      url: "git://github.com/compucorp/org.civicrm.shoreditch.git"
+      branch: "staging"
+      working-copy: true
+    destination: "modules/civicrm/tools/extensions"
