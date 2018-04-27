@@ -19,11 +19,13 @@ projects:
     download:
       type: "git"
       url: "git://github.com/compucorp/civihr-employee-portal.git"
+      tag: "1.7.5"
   civihr_employee_portal_theme:
     type: "theme"
     download:
       type: "git"
       url: "git://github.com/compucorp/civihr-employee-portal-theme.git"
+      tag: "1.7.5"
   libraries:
     version: "2.2"
   redirect:
@@ -143,16 +145,19 @@ libraries:
     download:
       type: "git"
       url: "git://github.com/civicrm/civihr.git"
+      tag: "1.7.5"
     destination: "modules/civicrm/tools/extensions"
   civihr_tasks:
     download:
       type: "git"
       url: "git://github.com/compucorp/civihr-tasks-assignments.git"
+      tag: "1.7.5"
     destination: "modules/civicrm/tools/extensions"
   org.civicrm.shoreditch:
       download:
         type: "git"
-        url: "git://github.com/compucorp/org.civicrm.shoreditch.git"
+        url: "git://github.com/civicrm/org.civicrm.shoreditch.git"
+        tag: "v0.1-alpha17"
       destination: "modules/civicrm/tools/extensions"
   pclzip:
     download:
