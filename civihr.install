@@ -142,11 +142,33 @@ function civihr_install_tasks($install_state) {
     'function' => '_civihr_install_civihr'
   ];
 
+  $tasks['finish_civihr_configuration'] = [
+    'display' => FALSE,
+    'display_name' => st('Finish CiviHR configuration'),
+    'type' => 'normal',
+    'run' => INSTALL_TASK_RUN_IF_REACHED,
+    'function' => '_civihr_finish_civihr_installation'
+  ];
+
   return $tasks;
 }
 
 function civihr_install_tasks_alter(&$tasks, $install_state) {
   $tasks['install_select_profile']['display'] = FALSE;
+  // Hide and skip the default database configuration step, as we have our own
+  $tasks['install_settings_form']['run'] = INSTALL_TASK_SKIP;
+  $tasks['install_settings_form']['display'] = FALSE;
+
+  $new_task['database_configuration'] = array(
+    'display' => TRUE,
+    'display_name' => st('Database Configuration'),
+    'type' => 'form',
+    'run' => isset($install_state['parameters']['database_configured']) ? INSTALL_TASK_SKIP : INSTALL_TASK_RUN_IF_REACHED,
+  );
+
+  // Add our database configuration step after the Verify Requirements step
+  $old_tasks = $tasks;
+  $tasks = array_slice($old_tasks, 0, 4) + $new_task + array_slice($old_tasks, 4);
 }
 
 function _civihr_install_civihr() {
@@ -164,6 +186,12 @@ function _civihr_install_civihr() {
 }
 
 function _civihr_install_civicrm(&$context) {
+  global $databases;
+
+  if (empty($databases['civicrm']['default'])) {
+    throw new \Exception('The CiviCRM database configuration is missing');
+  }
+
   watchdog(WATCHDOG_INFO, 'Installing CiviCRM');
   $civicrm_path = dirname(drupal_get_path('module', 'civicrm'));
 
@@ -181,11 +209,12 @@ function _civihr_install_civicrm(&$context) {
   // db property, so this is why we can only set it after we instantiate the
   // setup object.
   // @TODO use the init() method when this PR gets merged: https://github.com/civicrm/civicrm-setup/pull/14
+  $civicrmDb = $databases['civicrm']['default'];
   $setup->getModel()->db = [
-    'server' => 'localhost:3306',
-    'username' => 'root',
-    'password' => 'root',
-    'database' => 'civihr_civicrm'
+    'server' => "{$civicrmDb['host']}:{$civicrmDb['port']}",
+    'username' => $civicrmDb['username'],
+    'password' => $civicrmDb['password'],
+    'database' => $civicrmDb['database']
   ];
 
   $setup->installFiles();
@@ -368,4 +397,145 @@ function _civihr_get_roles($roles) {
   }
 
   return $ids;
+}
+
+function _civihr_finish_civihr_installation() {
+  global $databases;
+
+  // Now that we have CiviCRM installed with its own settings file we can remove
+  // the configuration from the Drupal settings file
+  $newDatabasesConfiguration = $databases;
+  unset($newDatabasesConfiguration['civicrm']);
+  $settings['databases'] = [
+    'value' => $newDatabasesConfiguration,
+    'required' => TRUE,
+  ];
+  drupal_rewrite_settings($settings);
+}
+
+function database_configuration() {
+  $form = [];
+
+  $form['database_configuration']['drupal'] = [
+    '#title' => 'Drupal Database',
+    '#type' => 'fieldset',
+    '#tree' => TRUE,
+  ];
+
+  $form['database_configuration']['drupal']['database'] = [
+    '#title' => st('Database'),
+    '#type' => 'textfield',
+    '#required' => TRUE,
+  ];
+
+  $form['database_configuration']['drupal']['username'] = [
+    '#title' => st('Username'),
+    '#type' => 'textfield',
+    '#required' => TRUE,
+  ];
+
+  $form['database_configuration']['drupal']['password'] = [
+    '#title' => st('Password'),
+    '#type' => 'password'
+  ];
+
+  $form['database_configuration']['civicrm'] = [
+    '#title' => 'CiviCRM Database',
+    '#type' => 'fieldset',
+    '#tree' => TRUE,
+  ];
+
+  $form['database_configuration']['civicrm']['database'] = [
+    '#title' => st('Database'),
+    '#type' => 'textfield',
+    '#required' => TRUE,
+  ];
+
+  $form['database_configuration']['civicrm']['username'] = [
+    '#title' => st('Username'),
+    '#type' => 'textfield',
+    '#required' => TRUE,
+  ];
+
+  $form['database_configuration']['civicrm']['password'] = [
+    '#title' => st('Password'),
+    '#type' => 'password'
+  ];
+
+  $form['database_configuration']['advanced'] = [
+    '#title' => 'Advanced Configuration',
+    '#type' => 'fieldset',
+    '#collapsible' => TRUE,
+    '#collapsed' => TRUE,
+    '#tree' => TRUE,
+  ];
+
+  $form['database_configuration']['advanced']['host'] = [
+    '#title' => 'Host',
+    '#type' => 'textfield',
+  ];
+
+  $form['database_configuration']['advanced']['port'] = [
+    '#title' => 'Port',
+    '#type' => 'textfield',
+  ];
+
+  $form['actions'] = ['#type' => 'actions'];
+  $form['actions']['save'] = [
+    '#type' => 'submit',
+    '#value' => st('Save and continue'),
+  ];
+
+  return $form;
+}
+
+function database_configuration_validate($form, &$form_state) {
+  $values = $form_state['values'];
+  if ($values['drupal']['database'] === $values['civicrm']['database']) {
+    form_set_error('civicrm][database', st('The CiviCRM database cannot be the same as the Drupal database'));
+  }
+}
+
+function database_configuration_submit($form, &$form_state) {
+  global $install_state;
+
+  $form_values = $form_state['values'];
+
+  // Adapted from install_settings_form_submit()
+  $additionalDatabaseSettings = [
+    'host' => $form_values['advanced']['host'] ?: '127.0.0.1',
+    'port' => $form_values['advanced']['port'] ?: '3306',
+    'driver' => 'mysql',
+    'prefix' => ''
+  ];
+
+  $settings['databases'] = [
+    'value'    => [
+      'default' => [
+        'default' => array_merge($form_values['drupal'], $additionalDatabaseSettings)
+      ],
+      // At this point, neither the session nor the database are initialized yet,
+      // so, in order to make this configuration available to the CiviCRM installation
+      // step, we save it to the Drupal settings file and then erase it once the
+      // CiviCRM settings file is created
+      'civicrm' => [
+        'default' => array_merge($form_values['civicrm'], $additionalDatabaseSettings)
+      ]
+    ],
+    'required' => TRUE,
+  ];
+  $settings['drupal_hash_salt'] = array(
+    'value'    => drupal_random_key(),
+    'required' => TRUE,
+  );
+  $settings['ski'] = array(
+    'value'    => drupal_random_key(),
+    'required' => TRUE,
+  );
+
+  drupal_rewrite_settings($settings);
+
+  $install_state['parameters']['database_configured'] = true;
+  $install_state['settings_verified'] = TRUE;
+  $install_state['completed_task'] = install_verify_completed_task();
 }
