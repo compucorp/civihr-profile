@@ -135,6 +135,13 @@ function civihr_install() {
   variable_set('node_admin_theme', '1');
 }
 
+/**
+ * Implements hook_install_tasks and define the custom tasks used by this profile
+ *
+ * @param array $install_state
+ *
+ * @return mixed
+ */
 function civihr_install_tasks($install_state) {
   $tasks['install_civihr'] = [
     'type' => 'batch',
@@ -153,6 +160,13 @@ function civihr_install_tasks($install_state) {
   return $tasks;
 }
 
+/**
+ * Implements hook_install_tasks_alter and makes customizations to the default
+ * tasks configuration
+ *
+ * @param array $tasks
+ * @param array $install_state
+ */
 function civihr_install_tasks_alter(&$tasks, $install_state) {
   $tasks['install_select_profile']['display'] = FALSE;
   // Hide and skip the default database configuration step, as we have our own
@@ -171,6 +185,15 @@ function civihr_install_tasks_alter(&$tasks, $install_state) {
   $tasks = array_slice($old_tasks, 0, 4) + $new_task + array_slice($old_tasks, 4);
 }
 
+/**
+ * Function that executes the install_civihr task.
+ *
+ * It is basically a set of batch jobs that will do the entire CiviHR installation,
+ * which includes: installing and configuring CiviCRM, the CiviHR extensions and
+ * the SSP modules
+ *
+ * @return array
+ */
 function _civihr_install_civihr() {
   $operations = [];
   $operations[] = [ '_civihr_install_civicrm', [] ];
@@ -185,6 +208,13 @@ function _civihr_install_civihr() {
   ];
 }
 
+/**
+ * Installs CiviCRM
+ *
+ * @param array $context
+ *
+ * @throws \Exception
+ */
 function _civihr_install_civicrm(&$context) {
   global $databases;
 
@@ -223,6 +253,11 @@ function _civihr_install_civicrm(&$context) {
   watchdog(WATCHDOG_INFO, 'CiviCRM Installed');
 }
 
+/**
+ * Create a set of batch operations to install the CiviHR extensions
+ *
+ * @return array
+ */
 function _civihr_get_extension_install_operations() {
   $operations = [];
 
@@ -269,6 +304,14 @@ function _civihr_get_extension_install_operations() {
   return $operations;
 }
 
+/**
+ * Installs the given $extensions in CiviCRM.
+ *
+ * @param array $extensions
+ * @param array $context
+ *
+ * @throws \CiviCRM_API3_Exception
+ */
 function  _civihr_install_install_extensions($extensions, &$context) {
   civicrm_initialize();
   $context['message'] = 'Installed ' . implode(', ', $extensions);
@@ -281,6 +324,12 @@ function  _civihr_install_install_extensions($extensions, &$context) {
   watchdog(WATCHDOG_INFO, 'Installed ' . implode(', ', $extensions));
 }
 
+/**
+ * Executes the SSP installation, which involves enabling all the necessary
+ * modules and features, as well as doing all the required drupal configuration.
+ *
+ * @param array $context
+ */
 function _civihr_install_ssp(&$context) {
   watchdog(WATCHDOG_INFO, 'Install SSP');
   _civihr_enabled_ssp_modules_and_features();
@@ -289,6 +338,9 @@ function _civihr_install_ssp(&$context) {
   watchdog(WATCHDOG_INFO, 'SSP Installed');
 }
 
+/**
+ * Enables all the modules and features used in the SSP
+ */
 function _civihr_enabled_ssp_modules_and_features() {
   watchdog(WATCHDOG_INFO, 'Installing SSP modules and features');
   drupal_flush_all_caches();
@@ -328,6 +380,9 @@ function _civihr_enabled_ssp_modules_and_features() {
   drupal_flush_all_caches();
 }
 
+/**
+ * Do any necessary Drupal configuration for the SSP
+ */
 function _civihr_ssp_extra_configuration() {
   watchdog(WATCHDOG_INFO, 'SSP extra configuration');
   variable_set('logintoboggan_login_with_email', 1);
@@ -340,6 +395,9 @@ function _civihr_ssp_extra_configuration() {
   drupal_flush_all_caches();
 }
 
+/**
+ * Setup the SSP themes
+ */
 function _civihr_setup_themes() {
   watchdog(WATCHDOG_INFO, 'Setup SSP themes');
   theme_enable(['seven', 'civihr_default_theme']);
@@ -350,6 +408,9 @@ function _civihr_setup_themes() {
   variable_set('civicrmtheme_theme_public', 'seven');
 }
 
+/**
+ * Creates the CiviHR demo users (civihr_staff, civihr_manager and civihr_admin)
+ */
 function _civihr_setup_users() {
   $users = [
     [
@@ -374,6 +435,13 @@ function _civihr_setup_users() {
   }
 }
 
+/**
+ * Creates a Drupal user and assign it to the given $roles
+ *
+ * @param string $username
+ * @param string $email
+ * @param array $roles
+ */
 function _civihr_create_user($username, $email, $roles = []) {
   $user = new stdClass();
   $user->roles = _civihr_get_roles($roles);
@@ -386,6 +454,15 @@ function _civihr_create_user($username, $email, $roles = []) {
   ]);
 }
 
+/**
+ * Returns a list of IDs for the given roles.
+ *
+ * The list format is: [ 'id' => 'role' ]
+ *
+ * @param array $roles
+ *
+ * @return array
+ */
 function _civihr_get_roles($roles) {
   $userRoles = array_flip(user_roles());
 
@@ -399,6 +476,12 @@ function _civihr_get_roles($roles) {
   return $ids;
 }
 
+/**
+ * Function called as the last of all the install tasks and it can be used by
+ * any sort of cleanup work
+ *
+ * @throws \Exception
+ */
 function _civihr_finish_civihr_installation() {
   global $databases;
 
@@ -413,6 +496,11 @@ function _civihr_finish_civihr_installation() {
   drupal_rewrite_settings($settings);
 }
 
+/**
+ * The form used by the Database Configuration task
+ *
+ * @return array
+ */
 function database_configuration() {
   $form = [];
 
@@ -489,6 +577,12 @@ function database_configuration() {
   return $form;
 }
 
+/**
+ * Validates the database configuration form
+ *
+ * @param array $form
+ * @param array $form_state
+ */
 function database_configuration_validate($form, &$form_state) {
   $values = $form_state['values'];
   if ($values['drupal']['database'] === $values['civicrm']['database']) {
@@ -496,12 +590,20 @@ function database_configuration_validate($form, &$form_state) {
   }
 }
 
+/**
+ * Function called when the database configuration form is submitted
+ *
+ * @param array $form
+ * @param array $form_state
+ *
+ * @throws \Exception
+ */
 function database_configuration_submit($form, &$form_state) {
   global $install_state;
 
   $form_values = $form_state['values'];
 
-  // Adapted from install_settings_form_submit()
+  // Settings saving adapted from install_settings_form_submit()
   $additionalDatabaseSettings = [
     'host' => $form_values['advanced']['host'] ?: '127.0.0.1',
     'port' => $form_values['advanced']['port'] ?: '3306',
