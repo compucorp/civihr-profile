@@ -638,11 +638,6 @@ function database_configuration_submit($form, &$form_state) {
     'value'    => drupal_random_key(),
     'required' => TRUE,
   );
-  $settings['ski'] = array(
-    'value'    => drupal_random_key(),
-    'required' => TRUE,
-  );
-
   drupal_rewrite_settings($settings);
 
   $install_state['parameters']['database_configured'] = true;
