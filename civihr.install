@@ -412,6 +412,10 @@ function _civihr_setup_themes() {
  * Creates the CiviHR demo users (civihr_staff, civihr_manager and civihr_admin)
  */
 function _civihr_setup_users() {
+  if (!variable_get('civihr_create_demo_users', false)) {
+    return;
+  }
+
   $users = [
     [
       'username' => 'civihr_staff',
@@ -484,6 +488,10 @@ function _civihr_get_roles($roles) {
  */
 function _civihr_finish_civihr_installation() {
   global $databases;
+
+  // We only use this variable during the installation, so there's no reason to
+  // keep it now that everything is installed
+  variable_del('civihr_create_demo_users');
 
   // Now that we have CiviCRM installed with its own settings file we can remove
   // the configuration from the Drupal settings file
@@ -630,14 +638,49 @@ function database_configuration_submit($form, &$form_state) {
     'value'    => drupal_random_key(),
     'required' => TRUE,
   );
-  $settings['ski'] = array(
-    'value'    => drupal_random_key(),
-    'required' => TRUE,
-  );
-
   drupal_rewrite_settings($settings);
 
   $install_state['parameters']['database_configured'] = true;
   $install_state['settings_verified'] = TRUE;
   $install_state['completed_task'] = install_verify_completed_task();
+}
+
+/**
+ * Implements hook_form_alter to modify the install_configure_form and add
+ * options specific to the CiviHR installation
+ *
+ * @param array $form
+ * @param array $form_state
+ */
+function civihr_form_install_configure_form_alter(&$form, &$form_state) {
+  $form['demo_data'] = [
+    '#type' => 'fieldset',
+    '#title' => 'Demo Data',
+  ];
+
+  $form['demo_data']['create_demo_users'] = [
+    '#type' => 'checkbox',
+    '#title' => 'Create demo users',
+    '#description' => t('If selected, the system will create three users (civihr_staff, civihr_manager, and civihr_admin), so that you can try it out using different roles'),
+    '#default_value' => 1
+  ];
+
+  // When the custom submit function is added, the default one is lost and it is
+  // not called, so here we add first the default one and then our custom function
+  $form['actions']['submit']['#submit'][] = 'install_configure_form_submit';
+  $form['actions']['submit']['#submit'][] = 'civihr_install_configure_form_submit';
+}
+
+/**
+ * Custom handler for the install_configure_form submission. Basically, this
+ * takes care of handling any custom fields added to that form by this profile
+ *
+ * @param $form
+ * @param $form_state
+ */
+function civihr_install_configure_form_submit($form, &$form_state) {
+  variable_set(
+    'civihr_create_demo_users',
+    !empty($form_state['values']['create_demo_users'])
+  );
 }
