@@ -202,6 +202,8 @@ function _civihr_install_civihr() {
 
   $operations[] = [ '_civihr_install_ssp', [] ];
 
+  $operations[] = [ '_civihr_extra_civicrm_configuration', [] ];
+
   return [
     'title' => t('Installing CiviHR'),
     'operations' => $operations
@@ -268,7 +270,6 @@ function _civihr_get_extension_install_operations() {
     ],
     [
       'org.civicrm.hrbank',
-      'org.civicrm.hrdemog',
       'org.civicrm.hrjobcontract',
       'com.civicrm.hrjobroles',
       'org.civicrm.hrmed',
@@ -478,6 +479,38 @@ function _civihr_get_roles($roles) {
   }
 
   return $ids;
+}
+
+/**
+ * This is an batch operation used to perform any civicrm-related
+ * necessary configuration while installing CiviHR. It can be used
+ * to set or remove default CiviCRM, options, settings, jobs etc.
+ *
+ * @param $context
+ *
+ * @throws \CiviCRM_API3_Exception
+ */
+function _civihr_extra_civicrm_configuration(&$context) {
+  _civihr_delete_civicrm_name_and_address_profile();
+}
+
+/**
+ * Deletes the "Name and Address" profile in CiviCRM
+ *
+ * @throws \CiviCRM_API3_Exception
+ */
+function _civihr_delete_civicrm_name_and_address_profile() {
+  // We use two separate API calls here because, for some unknown
+  // reason, when a chained call is used the "delete" call results
+  // in an exception saying that the Group cannot be deleted.
+  $result = civicrm_api3('UFGroup', 'getsingle', [
+    'return' => ['id'],
+    'title' => 'Name and address',
+  ]);
+  civicrm_api3('UFGroup', 'delete', [
+    'id' => $result['id'],
+    'debug' => 1,
+  ]);
 }
 
 /**
