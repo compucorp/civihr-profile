@@ -226,7 +226,6 @@ function _civihr_install_civicrm(&$context) {
     throw new \Exception('The CiviCRM database configuration is missing');
   }
 
-  watchdog(WATCHDOG_INFO, 'Installing CiviCRM');
   $civicrm_path = dirname(drupal_get_path('module', 'civicrm'));
 
   require_once implode(DIRECTORY_SEPARATOR, [$civicrm_path, 'CRM', 'Core', 'ClassLoader.php']);
@@ -253,8 +252,6 @@ function _civihr_install_civicrm(&$context) {
 
   $setup->installFiles();
   $setup->installDatabase();
-
-  watchdog(WATCHDOG_INFO, 'CiviCRM Installed');
 }
 
 /**
@@ -319,12 +316,8 @@ function  _civihr_install_install_extensions($extensions, &$context) {
   civicrm_initialize();
   $context['message'] = 'Installed ' . implode(', ', $extensions);
 
-  watchdog(WATCHDOG_INFO, 'Installing ' . implode(', ', $extensions));
-
   civicrm_api3('Extension', 'refresh');
   civicrm_api3('Extension', 'install', ['keys' => $extensions]);
-
-  watchdog(WATCHDOG_INFO, 'Installed ' . implode(', ', $extensions));
 }
 
 /**
@@ -334,19 +327,16 @@ function  _civihr_install_install_extensions($extensions, &$context) {
  * @param array $context
  */
 function _civihr_install_ssp(&$context) {
-  watchdog(WATCHDOG_INFO, 'Install SSP');
   _civihr_enabled_ssp_modules_and_features();
   _civihr_setup_themes();
   _civihr_setup_users();
   _civihr_import_export_node_files();
-  watchdog(WATCHDOG_INFO, 'SSP Installed');
 }
 
 /**
  * Enables all the modules and features used in the SSP
  */
 function _civihr_enabled_ssp_modules_and_features() {
-  watchdog(WATCHDOG_INFO, 'Installing SSP modules and features');
   drupal_flush_all_caches();
 
   $genericModules = [
@@ -388,7 +378,6 @@ function _civihr_enabled_ssp_modules_and_features() {
  * Do any necessary Drupal configuration for the SSP
  */
 function _civihr_ssp_extra_configuration() {
-  watchdog(WATCHDOG_INFO, 'SSP extra configuration');
   variable_set('logintoboggan_login_with_email', 1);
   variable_set('user_pictures', 0);
   variable_set('node_export_reset_path_webform', 0);
@@ -403,7 +392,6 @@ function _civihr_ssp_extra_configuration() {
  * Setup the SSP themes
  */
 function _civihr_setup_themes() {
-  watchdog(WATCHDOG_INFO, 'Setup SSP themes');
   theme_enable(['seven', 'civihr_default_theme']);
   drupal_flush_all_caches();
   variable_set('admin_theme', 'seven');
