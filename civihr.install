@@ -1,5 +1,7 @@
 <?php
 
+use Drupal\civihr_employee_portal\Helpers\NodeHelper;
+
 /**
  * Implements hook_install()
  */
@@ -336,6 +338,7 @@ function _civihr_install_ssp(&$context) {
   _civihr_enabled_ssp_modules_and_features();
   _civihr_setup_themes();
   _civihr_setup_users();
+  _civihr_import_export_node_files();
   watchdog(WATCHDOG_INFO, 'SSP Installed');
 }
 
@@ -479,6 +482,15 @@ function _civihr_get_roles($roles) {
   }
 
   return $ids;
+}
+
+/**
+ * Imports all the exported node files bundled in the SSP
+ *
+ * @throws \Exception
+ */
+function _civihr_import_export_node_files() {
+  NodeHelper::refreshExportFiles();
 }
 
 /**
