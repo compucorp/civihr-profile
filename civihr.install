@@ -327,10 +327,38 @@ function  _civihr_install_install_extensions($extensions, &$context) {
  * @param array $context
  */
 function _civihr_install_ssp(&$context) {
+  _civihr_flush_civicrm_permissions_cache();
   _civihr_enabled_ssp_modules_and_features();
   _civihr_setup_themes();
   _civihr_setup_users();
   _civihr_import_export_node_files();
+}
+
+/**
+ * Flush the CiviCRM permissions cached in memory.
+ *
+ * Civi stores the list of the permissions declared in each of the
+ * installed extensions in a static variable. If an extension is
+ * installed after the cache has been created, any permissions
+ * declared by the extension will not be added to the cache.
+ *
+ * In most of the cases this is not a problem, as usually
+ * extensions are installed in an isolated process (e.g., by clicking
+ * on the Install button in the admin interface, or by running `cv en`),
+ * however, when using this profile with drush, all the commands and tasks
+ * will be executed inside the same process. As a result, all the
+ * permissions added by the CiviHR extensions won't be added to the
+ * cache (because the cache is started when CiviCRM is first installed)
+ * and any code that relies on these permissions will fail.
+ *
+ * Clearing the CiviCRM cache with `System.flush` doesn't clear this
+ * in-memory cache, so the only way to do it is by unsetting the
+ * value in the static array.
+ */
+function _civihr_flush_civicrm_permissions_cache() {
+  if (class_exists('Civi')) {
+    unset(Civi::$statics[CRM_Core_Permission::class]['basicPermissions']);
+  }
 }
 
 /**
