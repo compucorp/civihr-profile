@@ -250,8 +250,19 @@ function _civihr_install_civicrm(&$context) {
     'database' => $civicrmDb['database']
   ];
 
-  $setup->installFiles();
-  $setup->installDatabase();
+  // Depending on how the Drupal installation was performed,
+  // It is possible that the Drupal settings folder will not
+  // be writable. So, before starting the CiviCRM installation,
+  // we need to make sure it's writable so that civicrm-setup
+  // is able to create the civicrm.settings.php file
+  $drupalConfigFolder = conf_path();
+  if (drupal_install_fix_file($drupalConfigFolder, FILE_WRITABLE)) {
+    $setup->installFiles();
+    $setup->installDatabase();
+
+    drupal_install_fix_file($drupalConfigFolder, FILE_NOT_WRITABLE);
+  }
+
 }
 
 /**
@@ -562,7 +573,16 @@ function _civihr_finish_civihr_installation() {
     'value' => $newDatabasesConfiguration,
     'required' => TRUE,
   ];
-  drupal_rewrite_settings($settings);
+
+  // Depending on how the Drupal installation was performed,
+  // it is possible that the settings.php file was made readonly,
+  // so we need first to make sure it's writable before attempting
+  // any updates
+  $settingFile = conf_path() . '/settings.php';
+  if (drupal_install_fix_file($settingFile, FILE_WRITABLE)) {
+    drupal_rewrite_settings($settings);
+    drupal_install_fix_file($settingFile, FILE_NOT_WRITABLE);
+  }
 }
 
 /**
