@@ -296,7 +296,6 @@ function _civihr_get_extension_install_operations() {
       'org.civicrm.hrui',
       'org.civicrm.hrcase',
       'org.civicrm.hrim',
-      'org.civicrm.hrrecruitment',
       'org.civicrm.reqangular',
       'org.civicrm.contactsummary',
       'org.civicrm.shoreditch',
