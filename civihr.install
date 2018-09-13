@@ -1,5 +1,7 @@
 <?php
 
+use Drupal\civihr_employee_portal\Helpers\NodeHelper;
+
 /**
  * Implements hook_install()
  */
@@ -202,6 +204,8 @@ function _civihr_install_civihr() {
 
   $operations[] = [ '_civihr_install_ssp', [] ];
 
+  $operations[] = [ '_civihr_extra_civicrm_configuration', [] ];
+
   return [
     'title' => t('Installing CiviHR'),
     'operations' => $operations
@@ -222,8 +226,7 @@ function _civihr_install_civicrm(&$context) {
     throw new \Exception('The CiviCRM database configuration is missing');
   }
 
-  watchdog(WATCHDOG_INFO, 'Installing CiviCRM');
-  $civicrm_path = dirname(drupal_get_path('module', 'civicrm'));
+  $civicrm_path = realpath(dirname(drupal_get_path('module', 'civicrm')));
 
   require_once implode(DIRECTORY_SEPARATOR, [$civicrm_path, 'CRM', 'Core', 'ClassLoader.php']);
   CRM_Core_ClassLoader::singleton()->register();
@@ -247,10 +250,19 @@ function _civihr_install_civicrm(&$context) {
     'database' => $civicrmDb['database']
   ];
 
-  $setup->installFiles();
-  $setup->installDatabase();
+  // Depending on how the Drupal installation was performed,
+  // It is possible that the Drupal settings folder will not
+  // be writable. So, before starting the CiviCRM installation,
+  // we need to make sure it's writable so that civicrm-setup
+  // is able to create the civicrm.settings.php file
+  $drupalConfigFolder = conf_path();
+  if (drupal_install_fix_file($drupalConfigFolder, FILE_WRITABLE)) {
+    $setup->installFiles();
+    $setup->installDatabase();
 
-  watchdog(WATCHDOG_INFO, 'CiviCRM Installed');
+    drupal_install_fix_file($drupalConfigFolder, FILE_NOT_WRITABLE);
+  }
+
 }
 
 /**
@@ -268,7 +280,6 @@ function _civihr_get_extension_install_operations() {
     ],
     [
       'org.civicrm.hrbank',
-      'org.civicrm.hrdemog',
       'org.civicrm.hrjobcontract',
       'com.civicrm.hrjobroles',
       'org.civicrm.hrmed',
@@ -285,7 +296,6 @@ function _civihr_get_extension_install_operations() {
       'org.civicrm.hrui',
       'org.civicrm.hrcase',
       'org.civicrm.hrim',
-      'org.civicrm.hrrecruitment',
       'org.civicrm.reqangular',
       'org.civicrm.contactsummary',
       'org.civicrm.shoreditch',
@@ -316,12 +326,8 @@ function  _civihr_install_install_extensions($extensions, &$context) {
   civicrm_initialize();
   $context['message'] = 'Installed ' . implode(', ', $extensions);
 
-  watchdog(WATCHDOG_INFO, 'Installing ' . implode(', ', $extensions));
-
   civicrm_api3('Extension', 'refresh');
   civicrm_api3('Extension', 'install', ['keys' => $extensions]);
-
-  watchdog(WATCHDOG_INFO, 'Installed ' . implode(', ', $extensions));
 }
 
 /**
@@ -331,18 +337,44 @@ function  _civihr_install_install_extensions($extensions, &$context) {
  * @param array $context
  */
 function _civihr_install_ssp(&$context) {
-  watchdog(WATCHDOG_INFO, 'Install SSP');
+  _civihr_flush_civicrm_permissions_cache();
   _civihr_enabled_ssp_modules_and_features();
   _civihr_setup_themes();
   _civihr_setup_users();
-  watchdog(WATCHDOG_INFO, 'SSP Installed');
+  _civihr_import_export_node_files();
+}
+
+/**
+ * Flush the CiviCRM permissions cached in memory.
+ *
+ * Civi stores the list of the permissions declared in each of the
+ * installed extensions in a static variable. If an extension is
+ * installed after the cache has been created, any permissions
+ * declared by the extension will not be added to the cache.
+ *
+ * In most of the cases this is not a problem, as usually
+ * extensions are installed in an isolated process (e.g., by clicking
+ * on the Install button in the admin interface, or by running `cv en`),
+ * however, when using this profile with drush, all the commands and tasks
+ * will be executed inside the same process. As a result, all the
+ * permissions added by the CiviHR extensions won't be added to the
+ * cache (because the cache is started when CiviCRM is first installed)
+ * and any code that relies on these permissions will fail.
+ *
+ * Clearing the CiviCRM cache with `System.flush` doesn't clear this
+ * in-memory cache, so the only way to do it is by unsetting the
+ * value in the static array.
+ */
+function _civihr_flush_civicrm_permissions_cache() {
+  if (class_exists('Civi')) {
+    unset(Civi::$statics[CRM_Core_Permission::class]['basicPermissions']);
+  }
 }
 
 /**
  * Enables all the modules and features used in the SSP
  */
 function _civihr_enabled_ssp_modules_and_features() {
-  watchdog(WATCHDOG_INFO, 'Installing SSP modules and features');
   drupal_flush_all_caches();
 
   $genericModules = [
@@ -384,7 +416,6 @@ function _civihr_enabled_ssp_modules_and_features() {
  * Do any necessary Drupal configuration for the SSP
  */
 function _civihr_ssp_extra_configuration() {
-  watchdog(WATCHDOG_INFO, 'SSP extra configuration');
   variable_set('logintoboggan_login_with_email', 1);
   variable_set('user_pictures', 0);
   variable_set('node_export_reset_path_webform', 0);
@@ -399,7 +430,6 @@ function _civihr_ssp_extra_configuration() {
  * Setup the SSP themes
  */
 function _civihr_setup_themes() {
-  watchdog(WATCHDOG_INFO, 'Setup SSP themes');
   theme_enable(['seven', 'civihr_default_theme']);
   drupal_flush_all_caches();
   variable_set('admin_theme', 'seven');
@@ -481,6 +511,47 @@ function _civihr_get_roles($roles) {
 }
 
 /**
+ * Imports all the exported node files bundled in the SSP
+ *
+ * @throws \Exception
+ */
+function _civihr_import_export_node_files() {
+  NodeHelper::refreshExportFiles();
+}
+
+/**
+ * This is an batch operation used to perform any civicrm-related
+ * necessary configuration while installing CiviHR. It can be used
+ * to set or remove default CiviCRM, options, settings, jobs etc.
+ *
+ * @param $context
+ *
+ * @throws \CiviCRM_API3_Exception
+ */
+function _civihr_extra_civicrm_configuration(&$context) {
+  _civihr_delete_civicrm_name_and_address_profile();
+}
+
+/**
+ * Deletes the "Name and Address" profile in CiviCRM
+ *
+ * @throws \CiviCRM_API3_Exception
+ */
+function _civihr_delete_civicrm_name_and_address_profile() {
+  // We use two separate API calls here because, for some unknown
+  // reason, when a chained call is used the "delete" call results
+  // in an exception saying that the Group cannot be deleted.
+  $result = civicrm_api3('UFGroup', 'getsingle', [
+    'return' => ['id'],
+    'title' => 'Name and address',
+  ]);
+  civicrm_api3('UFGroup', 'delete', [
+    'id' => $result['id'],
+    'debug' => 1,
+  ]);
+}
+
+/**
  * Function called as the last of all the install tasks and it can be used by
  * any sort of cleanup work
  *
@@ -501,7 +572,16 @@ function _civihr_finish_civihr_installation() {
     'value' => $newDatabasesConfiguration,
     'required' => TRUE,
   ];
-  drupal_rewrite_settings($settings);
+
+  // Depending on how the Drupal installation was performed,
+  // it is possible that the settings.php file was made readonly,
+  // so we need first to make sure it's writable before attempting
+  // any updates
+  $settingFile = conf_path() . '/settings.php';
+  if (drupal_install_fix_file($settingFile, FILE_WRITABLE)) {
+    drupal_rewrite_settings($settings);
+    drupal_install_fix_file($settingFile, FILE_NOT_WRITABLE);
+  }
 }
 
 /**

@@ -1,3 +1,3 @@
 #!/usr/bin/env bash
 
-drush make build-civihr-package.make.yml site
+drush make --concurrency=5 build-civihr-package.make.yml site
